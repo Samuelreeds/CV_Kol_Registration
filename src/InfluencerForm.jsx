@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { Send, ChevronRight, ChevronLeft, Check, ArrowDown, Video, Instagram, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Send, ChevronRight, ChevronLeft, Check, ArrowDown, Video, Instagram, AlertCircle } from 'lucide-react';
 import { supabase } from './supabaseClient'; 
 
 export default function InfluencerForm() {
@@ -64,7 +63,6 @@ export default function InfluencerForm() {
   const validateStep1 = () => {
     if (!formData.fullName.trim()) { showMessage("Missing Name", "Please enter your full name."); return false; }
     
-    // Strict Phone Validation
     const phoneDigits = formData.phone.replace(/\D/g, '');
     if (phoneDigits.length < 9 || phoneDigits.length > 10) { 
         showMessage("Invalid Phone", "Phone number must be 9-10 digits."); 
@@ -87,7 +85,6 @@ export default function InfluencerForm() {
         }
     }
     if (step === 2) {
-        // Require at least one link OR one follower count
         if (!formData.tiktokLink && !formData.instagramLink && !formData.followerCounts) {
             showMessage("Socials Required", "Please provide at least one profile link or follower count.");
             scrollTop();
@@ -124,12 +121,8 @@ export default function InfluencerForm() {
           }
         ]);
 
-      if (error) {
-        console.error("Supabase Error:", error);
-        showMessage("Submission Failed", "Database error. Please check console.");
-      } else {
-        showMessage("Application Sent!", "Welcome to the Creator Circle.", "success");
-      }
+      if (error) throw error;
+      showMessage("Application Sent!", "Welcome to the Creator Circle.", "success");
     } catch (error) {
       console.error(error);
       showMessage("Network Error", "Unable to connect to the server.");
@@ -141,7 +134,6 @@ export default function InfluencerForm() {
   return (
     <div className="font-sans bg-white text-gray-900 relative">
       
-      {/* === CUSTOM MODAL === */}
       {modal.show && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white max-w-sm w-full shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-2 border-black flex flex-col items-center text-center p-8 animate-in zoom-in-95 duration-200">
@@ -157,26 +149,16 @@ export default function InfluencerForm() {
         </div>
       )}
 
-      {/* HEADER WITH BACK BUTTON */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 py-4 flex justify-center items-center shadow-sm transition-all duration-300">
-        <Link 
-          to="/" 
-          className="absolute left-6 top-1/2 -translate-y-1/2 p-2 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-all duration-300"
-          title="Return to Selection"
-        >
-           <ArrowLeft size={24} />
-        </Link>
         <div className="w-30 h-20 flex items-center justify-center">
            <img src="/logo.jpg" alt="BARE Logo" className="h-full object-contain" />
         </div>
       </nav>
 
-      {/* HERO SECTION */}
       <div className="min-h-screen flex flex-col items-center justify-center relative p-6 pt-32">
         <div className="text-center space-y-6 max-w-3xl">
           <p className="text-sm text-gray-500 uppercase tracking-[0.3em]">Influencer Program</p>
           <h1 className="text-5xl md:text-7xl font-bold uppercase tracking-widest leading-tight">PR Box<br />Creator</h1>
-          
           <button onClick={scrollToForm} className="bg-black text-white px-10 py-4 font-bold uppercase tracking-widest hover:bg-gray-800 transition shadow-xl mt-8">
              Apply for PR
           </button>
@@ -186,11 +168,8 @@ export default function InfluencerForm() {
         </div>
       </div>
 
-      {/* FORM SECTION */}
       <div ref={formRef} className="scroll-mt-32 min-h-screen flex flex-col items-center pb-20 px-6">
         <div className="w-full max-w-4xl relative">
-          
-          {/* STEPPER */}
           <div className="flex justify-center items-center mb-16 pt-10">
             {[1, 2, 3].map((num) => (
               <div key={num} className="flex items-center">
@@ -202,71 +181,29 @@ export default function InfluencerForm() {
             ))}
           </div>
 
-          {/* STEP 1: IDENTITY */}
           {step === 1 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-2xl font-bold border-b-2 border-black pb-4 mb-8 uppercase">01. Identity</h2>
-              
-              <InputField 
-                label="Full Name" 
-                name="fullName" 
-                value={formData.fullName} 
-                onChange={handleChange} 
-                placeholder="e.g. Sok Dara" 
-              />
-              
+              <InputField label="Full Name" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="e.g. Sok Dara" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <InputField 
-                  label="Telegram Phone" 
-                  name="phone" 
-                  value={formData.phone} 
-                  onChange={handleChange} 
-                  placeholder="e.g. 096 123 4567" 
-                  maxLength={10} 
-                />
-                <InputField 
-                  label="Email Address" 
-                  name="email" 
-                  value={formData.email} 
-                  onChange={handleChange} 
-                  type="email" 
-                  placeholder="name@example.com" 
-                />
+                <InputField label="Telegram Phone" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g. 096 123 4567" maxLength={10} />
+                <InputField label="Email Address" name="email" value={formData.email} onChange={handleChange} type="email" placeholder="name@example.com" />
               </div>
-
               <div className="flex justify-end pt-8">
                 <button onClick={nextStep} className="bg-black text-white px-10 py-4 font-bold uppercase tracking-widest hover:bg-gray-800 transition flex items-center gap-3 text-sm">Next Step <ChevronRight size={18} /></button>
               </div>
             </div>
           )}
 
-          {/* STEP 2: SOCIALS */}
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-2xl font-bold border-b-2 border-black pb-4 mb-8 uppercase">02. Social Presence</h2>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <InputField 
-                  label="TikTok Profile Link" 
-                  name="tiktokLink" 
-                  value={formData.tiktokLink} 
-                  onChange={handleChange} 
-                  placeholder="https://tiktok.com/@yourname" 
-                />
-                <InputField 
-                  label="Instagram Profile Link" 
-                  name="instagramLink" 
-                  value={formData.instagramLink} 
-                  onChange={handleChange} 
-                  placeholder="https://instagram.com/yourname" 
-                />
+                <InputField label="TikTok Profile Link" name="tiktokLink" value={formData.tiktokLink} onChange={handleChange} placeholder="https://tiktok.com/@yourname" />
+                <InputField label="Instagram Profile Link" name="instagramLink" value={formData.instagramLink} onChange={handleChange} placeholder="https://instagram.com/yourname" />
               </div>
-
-              {/* PLATFORM COUNTS */}
               <div className="mb-8 p-6 bg-gray-50 border-l-4 border-black">
                 <label className="block text-sm font-bold text-gray-900 mb-4 uppercase">Follower Counts (Select Active)</label>
-                
-                {/* TikTok Toggle */}
                 <div className="mb-4">
                    <label className="flex items-center gap-3 cursor-pointer mb-2">
                       <input type="checkbox" checked={platforms.tiktok} onChange={() => handlePlatformToggle('tiktok')} className="w-5 h-5 accent-black" />
@@ -276,8 +213,6 @@ export default function InfluencerForm() {
                       <input type="text" value={counts.tiktok} onChange={(e) => handleCountChange('tiktok', e.target.value)} className="w-full bg-white border border-gray-200 p-3 text-sm outline-none focus:border-black transition-colors" placeholder="e.g. 50k" />
                    )}
                 </div>
-
-                {/* Instagram Toggle */}
                 <div className="mb-4">
                    <label className="flex items-center gap-3 cursor-pointer mb-2">
                       <input type="checkbox" checked={platforms.instagram} onChange={() => handlePlatformToggle('instagram')} className="w-5 h-5 accent-black" />
@@ -287,8 +222,6 @@ export default function InfluencerForm() {
                       <input type="text" value={counts.instagram} onChange={(e) => handleCountChange('instagram', e.target.value)} className="w-full bg-white border border-gray-200 p-3 text-sm outline-none focus:border-black transition-colors" placeholder="e.g. 10k" />
                    )}
                 </div>
-
-                {/* Facebook Toggle */}
                 <div>
                    <label className="flex items-center gap-3 cursor-pointer mb-2">
                       <input type="checkbox" checked={platforms.facebook} onChange={() => handlePlatformToggle('facebook')} className="w-5 h-5 accent-black" />
@@ -299,7 +232,6 @@ export default function InfluencerForm() {
                    )}
                 </div>
               </div>
-
               <div className="flex justify-between pt-8">
                 <button onClick={prevStep} className="text-gray-500 font-bold uppercase flex items-center gap-2 hover:text-black transition text-sm"><ChevronLeft size={18} /> Back</button>
                 <button onClick={nextStep} className="bg-black text-white px-10 py-4 font-bold uppercase tracking-widest hover:bg-gray-800 transition flex items-center gap-3 text-sm">Next Step <ChevronRight size={18} /></button>
@@ -307,11 +239,9 @@ export default function InfluencerForm() {
             </div>
           )}
 
-          {/* STEP 3: EXPERIENCE & AGREEMENT */}
           {step === 3 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-2xl font-bold border-b-2 border-black pb-4 mb-8 uppercase">03. Experience & Terms</h2>
-              
               <div className="mb-8">
                 <label className="block text-sm font-bold text-gray-900 mb-4 uppercase">Have you created UGC before?</label>
                 <div className="flex gap-8">
@@ -323,19 +253,16 @@ export default function InfluencerForm() {
                   ))}
                 </div>
               </div>
-
               {formData.ugcExperience === 'Yes' && (
                 <div className="mb-8">
                    <label className="block text-sm font-bold text-gray-900 mb-2 uppercase">Previous Content Samples</label>
                    <textarea name="contentSamples" value={formData.contentSamples} onChange={handleChange} className="w-full bg-gray-50 border-b-2 border-gray-200 p-4 outline-none text-lg h-32 focus:border-black transition-colors resize-none" placeholder="Paste links to your best videos here..." />
                 </div>
               )}
-
               <div className="mb-8">
                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase">Why collaborate with BARE?</label>
                  <textarea name="collaborationReason" value={formData.collaborationReason} onChange={handleChange} className="w-full bg-gray-50 border-b-2 border-gray-200 p-4 outline-none text-lg h-32 focus:border-black transition-colors resize-none" placeholder="Tell us your story and why you love skincare..." />
               </div>
-
               <div className="bg-black text-white p-8 rounded-sm mb-8">
                 <h3 className="text-sm font-bold uppercase mb-4 tracking-wider border-b border-gray-700 pb-2">Creator Agreement</h3>
                 <ul className="text-xs text-gray-400 space-y-2 mb-6 list-disc pl-4">
@@ -347,12 +274,10 @@ export default function InfluencerForm() {
                     <div className={`w-5 h-5 border-2 border-white flex items-center justify-center transition-colors ${formData.agreement ? 'bg-white' : 'bg-transparent'}`}>
                         {formData.agreement && <Check size={14} className="text-black" />}
                     </div>
-                    {/* Hidden input for logic */}
                     <input type="checkbox" name="agreement" checked={formData.agreement} onChange={handleChange} className="hidden" />
                     <span className="text-xs font-bold uppercase tracking-wider text-white">I agree and understand</span>
                 </div>
               </div>
-
               <div className="flex justify-between pt-8">
                 <button onClick={prevStep} className="text-gray-500 font-bold uppercase flex items-center gap-2 hover:text-black transition text-sm"><ChevronLeft size={18} /> Back</button>
                 <button onClick={handleSubmit} disabled={isSubmitting} className="bg-black text-white px-12 py-4 font-bold uppercase tracking-widest hover:bg-gray-800 transition shadow-lg text-sm flex items-center gap-3">
@@ -361,11 +286,8 @@ export default function InfluencerForm() {
               </div>
             </div>
           )}
-
         </div>
       </div>
-
-      {/* FOOTER */}
       <footer className="bg-black pt-20 md:pt-32 pb-16 px-6 md:px-12 border-t border-neutral-800 font-sans text-white">
         <div className="max-w-[1400px] mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24">
@@ -400,7 +322,6 @@ export default function InfluencerForm() {
   );
 }
 
-// === MOVED OUTSIDE ===
 const InputField = ({ label, name, value, onChange, type = "text", placeholder, maxLength }) => (
   <div className="mb-8">
     <label className="block text-sm font-bold text-gray-900 mb-2 uppercase">{label}</label>

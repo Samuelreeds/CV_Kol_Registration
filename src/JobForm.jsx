@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, ChevronLeft, UploadCloud, FileText, ArrowDown, Check, AlertCircle } from 'lucide-react';
+import { supabase } from './supabaseClient'; 
 
 export default function JobForm() {
   const [step, setStep] = useState(1);
@@ -27,11 +28,22 @@ export default function JobForm() {
     position: '', salary: '', startDate: '', coverLetter: '', resume: null 
   });
 
+  // === FETCH POSITIONS FROM SUPABASE ===
   useEffect(() => {
-    fetch('https://my-backend-bareregistration.onrender.com/positions')
-      .then(res => res.json())
-      .then(data => setPositions(data))
-      .catch(err => console.error(err));
+    async function fetchPositions() {
+      try {
+        const { data, error } = await supabase
+          .from('Position') 
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        setPositions(data || []);
+      } catch (err) {
+        console.error("Error fetching positions:", err);
+      }
+    }
+    fetchPositions();
   }, []);
 
   const scrollToForm = () => {
@@ -79,7 +91,7 @@ export default function JobForm() {
   const nextStep = () => {
     if (step === 1) {
         if (!validateStep1()) {
-            scrollTop(); // Scroll up to see the error
+            scrollTop(); 
             return;
         }
     }
@@ -89,6 +101,7 @@ export default function JobForm() {
 
   const prevStep = () => { setStep(s => s - 1); scrollTop(); };
 
+  // === SUBMIT DATA TO SUPABASE ===
   const handleSubmit = async () => {
     if (!formData.position) return showMessage("Position Required", "Please select the position you are applying for.");
     if (!formData.salary) return showMessage("Salary Required", "Please enter your expected salary.");
@@ -96,21 +109,48 @@ export default function JobForm() {
     if (!formData.resume) return showMessage("Resume Required", "Please upload your Resume/CV (PDF) to proceed.");
     
     setIsSubmitting(true);
-    const data = new FormData();
-    Object.keys(formData).forEach(key => data.append(key, formData[key]));
 
     try {
-      const response = await fetch('https://my-backend-bareregistration.onrender.com/submit-job', { method: 'POST', body: data });
-      if (response.ok) {
-        showMessage("Application Submitted!", "Good luck! We will review your application soon.", "success");
-      } else {
-        showMessage("Submission Failed", "Please try again later.");
-      }
+      // 1. Upload Resume to Supabase Storage
+      const fileExt = formData.resume.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('Bucket') 
+        .upload(fileName, formData.resume);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get Public URL of the uploaded resume
+      const { data: { publicUrl } } = supabase.storage
+        .from('Bucket') 
+        .getPublicUrl(fileName);
+
+      // 3. Insert Application Data into the database
+      const { error: dbError } = await supabase
+        .from('JobApplicant') // <--- FIXED: Now matches your actual table name exactly
+        .insert([{
+          full_name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          linkedin_url: formData.linkedinUrl,
+          position_applied: formData.position,
+          expected_salary: formData.salary,
+          start_date: formData.startDate,
+          cover_letter: formData.coverLetter,
+          resume_url: publicUrl 
+        }]);
+
+      if (dbError) throw dbError;
+
+      showMessage("Application Submitted!", "Good luck! We will review your application soon.", "success");
     } catch (error) { 
-      console.error(error); 
-      showMessage("Network Error", "Unable to connect to server."); 
+      console.error("Submission Error:", error); 
+      showMessage("Submission Failed", "Unable to connect to server or upload file. Please try again."); 
     } 
-    finally { setIsSubmitting(false); }
+    finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   return (

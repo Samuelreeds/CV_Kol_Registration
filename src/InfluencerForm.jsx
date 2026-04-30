@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Send, ChevronRight, ChevronLeft, Check, ArrowDown, Video, Instagram, AlertCircle, ArrowLeft } from 'lucide-react';
+import { supabase } from './supabaseClient'; 
 
 export default function InfluencerForm() {
   const [step, setStep] = useState(1);
@@ -107,18 +108,27 @@ export default function InfluencerForm() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('https://my-backend-bareregistration.onrender.com/submit-influencer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const { error } = await supabase
+        .from('Influencer') 
+        .insert([
+          {
+            full_name: formData.fullName,
+            phone: formData.phone,
+            email: formData.email,
+            tiktok_link: formData.tiktokLink,
+            instagram_link: formData.instagramLink,
+            follower_counts: formData.followerCounts,
+            ugc_experience: formData.ugcExperience,
+            content_samples: formData.contentSamples,
+            collaboration_reason: formData.collaborationReason
+          }
+        ]);
 
-      if (res.ok) {
-        showMessage("Application Sent!", "Welcome to the Creator Circle.", "success");
+      if (error) {
+        console.error("Supabase Error:", error);
+        showMessage("Submission Failed", "Database error. Please check console.");
       } else {
-        const errorText = await res.text();
-        console.error("Server Error:", errorText);
-        showMessage("Submission Failed", "Server error. Please check console.");
+        showMessage("Application Sent!", "Welcome to the Creator Circle.", "success");
       }
     } catch (error) {
       console.error(error);

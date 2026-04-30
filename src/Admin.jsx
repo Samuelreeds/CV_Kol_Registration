@@ -4,8 +4,8 @@ import * as XLSX from 'xlsx';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-// === 🔴 IMPORTANT: CHANGE THIS WHEN DEPLOYING ===
-const API_URL = 'http://localhost:3001/api';
+// === NEW: Import Supabase Client ===
+import { supabase } from './supabaseClient'; 
 
 export default function AdminDashboard() {
   const [token, setToken] = useState(localStorage.getItem('adminToken'));
@@ -50,20 +50,14 @@ export default function AdminDashboard() {
   // === LOGIN ===
   const handleLogin = async (e) => {
     e.preventDefault();
-    try {
-      const res = await fetch(`${API_URL}/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem('adminToken', data.token);
-        setToken(data.token);
-      } else {
-        showAlert("Access Denied", "Incorrect Password", "error");
-      }
-    } catch (err) { showAlert("Error", "Server connection failed", "error"); }
+    // Temporary frontend auth since the Express backend is gone. 
+    // Change 'admin123' to whatever passcode you want.
+    if (password === 'admin123') {
+      localStorage.setItem('adminToken', 'supabase-mock-token');
+      setToken('supabase-mock-token');
+    } else {
+      showAlert("Access Denied", "Incorrect Password", "error");
+    }
   };
 
   const handleLogout = () => {
@@ -71,56 +65,56 @@ export default function AdminDashboard() {
     setToken(null);
   };
 
-  // === FETCH DATA ===
+  // === FETCH DATA (SUPABASE) ===
   const fetchData = async () => {
-    let endpoint = activeTab === 'creators' ? '/influencers' : '/jobs';
+    // Assuming your Supabase tables are named 'Influencer' and 'Job'
+    let tableName = activeTab === 'creators' ? 'Influencer' : 'Job';
 
     try {
-      const res = await fetch(`${API_URL}${endpoint}`, {
-        headers: { 'Authorization': token }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDataList(data);
-      }
-    } catch (err) { console.error(err); }
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setDataList(data || []);
+    } catch (err) { 
+      console.error(err); 
+      showAlert("Error", "Could not fetch data from database.", "error");
+    }
   };
 
   useEffect(() => {
     if (token) fetchData();
   }, [token, activeTab]);
 
-  // === ROLE FUNCTIONS ===
+  // === ROLE FUNCTIONS (SUPABASE) ===
   const fetchRoles = async () => {
     try {
-      const res = await fetch(`${API_URL}/positions`);
-      if (res.ok) { const data = await res.json(); setRolesList(data); }
+      // Assuming your table is named 'Position'
+      const { data, error } = await supabase.from('Position').select('*').order('created_at', { ascending: true });
+      if (error) throw error;
+      setRolesList(data || []);
     } catch (err) { console.error(err); }
   };
 
   const handleAddRole = async () => {
     if (!newRole) return;
     try {
-      const res = await fetch(`${API_URL}/positions`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': token 
-        },
-        body: JSON.stringify({ title: newRole })
-      });
-      if (res.ok) { setNewRole(''); fetchRoles(); }
+      const { error } = await supabase.from('Position').insert([{ title: newRole }]);
+      if (error) throw error;
+      
+      setNewRole(''); 
+      fetchRoles(); 
     } catch (err) { console.error(err); }
   };
 
   const handleDeleteRole = async (id) => {
     if(!window.confirm("Remove this position option?")) return;
     try {
-      const res = await fetch(`${API_URL}/positions/${id}`, { 
-        method: 'DELETE',
-        headers: { 'Authorization': token }
-      });
-      if (res.ok) fetchRoles();
+      const { error } = await supabase.from('Position').delete().eq('id', id);
+      if (error) throw error;
+      fetchRoles();
     } catch (err) { console.error(err); }
   };
 
@@ -129,15 +123,10 @@ export default function AdminDashboard() {
   const saveEditRole = async (id) => {
     if (!editRoleText.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/positions/${id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': token 
-        },
-        body: JSON.stringify({ title: editRoleText })
-      });
-      if (res.ok) { setEditingRoleId(null); fetchRoles(); }
+      const { error } = await supabase.from('Position').update({ title: editRoleText }).eq('id', id);
+      if (error) throw error;
+      setEditingRoleId(null); 
+      fetchRoles();
     } catch (err) { console.error(err); }
   };
 
@@ -157,40 +146,33 @@ export default function AdminDashboard() {
     XLSX.writeFile(wb, `${activeTab.toUpperCase()}_Report_${filterDate}.xlsx`);
   };
 
-  // === ACTIONS ===
+  // === ACTIONS (SUPABASE) ===
   const updateStatus = (id, status) => {
     requestConfirm(`Mark as ${status}?`, `Update status to ${status}?`, async () => {
-      let endpoint = activeTab === 'creators' ? `/influencers/${id}/status` : `/jobs/${id}/status`;
+      let tableName = activeTab === 'creators' ? 'Influencer' : 'Job';
 
       try {
-        const res = await fetch(`${API_URL}${endpoint}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': token },
-          body: JSON.stringify({ status })
-        });
-        if (res.ok) {
-          fetchData();
-          setSelectedItem(prev => prev ? ({ ...prev, status }) : null);
-          showAlert("Success", "Status Updated", "success");
-        }
+        const { error } = await supabase.from(tableName).update({ status }).eq('id', id);
+        if (error) throw error;
+
+        fetchData();
+        setSelectedItem(prev => prev ? ({ ...prev, status }) : null);
+        showAlert("Success", "Status Updated", "success");
       } catch (err) { showAlert("Failed", "Update failed", "error"); }
     });
   };
 
   const deleteItem = (id) => {
     requestConfirm("Delete Record?", "This cannot be undone.", async () => {
-      let endpoint = activeTab === 'creators' ? `/influencers/${id}` : `/jobs/${id}`;
+      let tableName = activeTab === 'creators' ? 'Influencer' : 'Job';
 
       try {
-        const res = await fetch(`${API_URL}${endpoint}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': token }
-        });
-        if (res.ok) {
-          fetchData();
-          setSelectedItem(null);
-          showAlert("Deleted", "Record removed", "success");
-        }
+        const { error } = await supabase.from(tableName).delete().eq('id', id);
+        if (error) throw error;
+
+        fetchData();
+        setSelectedItem(null);
+        showAlert("Deleted", "Record removed", "success");
       } catch (err) { showAlert("Failed", "Delete failed", "error"); }
     });
   };
@@ -464,11 +446,10 @@ const DetailItem = ({ label, value, full }) => ( <div className={`w-full ${full 
 const SocialLinks = ({ item }) => ( <div className="md:col-span-2 mt-4 pt-4 border-t border-gray-50"> <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Social Profiles</h4> <div className="grid grid-cols-2 gap-4"> {item.tiktok_link && <SocialButton label="TikTok" url={item.tiktok_link} icon={<Video size={18}/>} />} {item.instagram_link && <SocialButton label="Instagram" url={item.instagram_link} icon={<Instagram size={18}/>} />} </div> </div> );
 const StatusBadge = ({ status }) => ( <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${status === 'Approved' ? 'bg-green-100 text-green-600' : status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}> {status || 'PENDING'} </span> );
 
-// === FIX FOR CLOUDINARY URLS ===
 const DocPreview = ({ label, url, large }) => { 
   if (!url) return null; 
-  // If it's a Cloudinary URL, use it directly. If it's old local data, prepend local server.
-  const fullUrl = url.startsWith('http') ? url : `http://localhost:3001/${url.replace(/\\/g, '/')}`; 
+  // Modified: No longer prepends localhost. Assumes Supabase Storage full URL.
+  const fullUrl = url?.startsWith('http') ? url : ''; 
   
   return ( 
     <a href={fullUrl} target="_blank" rel="noopener noreferrer" className={`block group ${large ? 'w-full h-24 flex items-center justify-center bg-gray-100 rounded-xl border border-dashed border-gray-300 hover:border-black transition' : ''}`}> 
